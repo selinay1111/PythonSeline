@@ -173,7 +173,8 @@ class AdventureGameSimulation:
         # Note: We have completed this method for you. Do NOT modify it for A1.
 
         current_event = self._events.first  # Start from the first event in the list
-
+        
+# loop through each event and print out event description
         while current_event:
             print(current_event.description)
             if current_event is not self._events.last:
