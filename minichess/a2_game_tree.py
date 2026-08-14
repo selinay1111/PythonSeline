@@ -33,13 +33,16 @@ class GameTree:
       - move: the current chess move (expressed in chess notation), or '*' if this tree
               represents the start of a game
       - is_white_move: True if White is to make the next move after this, False otherwise
+      - white_win_probability: the probability of white winning from the current state of the game
 
     Representation Invariants:
         - self.move == GAME_START_MOVE or self.move is a valid Minichess move
         - self.move != GAME_START_MOVE or self.is_white_move == True
+        - 0.0 <= self.white_win_probability <= 1.0
     """
     move: str
     is_white_move: bool
+    white_win_probability: float
 
     # Private Instance Attributes:
     #  - _subtrees:
@@ -48,7 +51,8 @@ class GameTree:
     _subtrees: list[GameTree]
 
     def __init__(self, move: str = GAME_START_MOVE,
-                 is_white_move: bool = True) -> None:
+                 is_white_move: bool = True,
+                 white_win_probability: float = 0.0) -> None:
         """Initialize a new game tree.
 
         Note that this initializer uses optional arguments, as illustrated below.
@@ -80,6 +84,7 @@ class GameTree:
 
     def add_subtree(self, subtree: GameTree) -> None:
         """Add a subtree to this game tree."""
+        subtree._update_white_win_probability()
         self._subtrees.append(subtree)
 
     def __str__(self) -> str:
@@ -108,7 +113,7 @@ class GameTree:
     ############################################################################
     # Part 1: Loading and "Replaying" Minichess games
     ############################################################################
-    def insert_move_sequence(self, moves: list[str]) -> None:
+    def insert_move_sequence(self, moves: list[str], win_probability: float = 0.0) -> None:
         """Insert the given sequence of moves into this tree.
 
         The inserted moves form a chain of descendants, where:
@@ -138,9 +143,9 @@ class GameTree:
         """
         if not moves:
             return
-        self.helper(moves, 0)
+        self.helper(moves, 0, win_probability)
 
-    def helper(self, moves: list[str], cur: int) -> None:
+    def helper(self, moves: list[str], cur: int, win_probability: float) -> None:
         # if we hit the end of list, just return, this is base case
         if cur >= len(moves):
             return
@@ -148,7 +153,13 @@ class GameTree:
         if child is None:
             child = GameTree(moves[cur], not self.is_white_move)
             self.add_subtree(child)
-        return child.helper(moves, cur + 1)
+        if cur == len(moves) - 1:
+            child.white_win_probability = win_probability
+        else:
+            child.helper(moves, cur + 1, win_probability)
+
+        # after the child and its subtree has been updated, recalculate this node
+        self._update_white_win_probability()
 
     ############################################################################
     # Part 2: Complete Game Trees and Win Probabilities
@@ -168,7 +179,17 @@ class GameTree:
             - if self is not a leaf and self.is_white_move is False, the white win probability
               is equal to the AVERAGE of the white win probabilities of its subtrees
         """
+        # leaf: nothing to update
+        if not self._subtrees:
+            return
 
+        # get all the win probabilities as a list
+        win_probability = [subtree.white_win_probability for subtree in self._subtrees]
+
+        if self.is_white_move:
+            self.white_win_probability = max(win_probability)
+        else:
+            self.white_win_probability = sum(win_probability) / len(win_probability)
 
 if __name__ == '__main__':
     import doctest
